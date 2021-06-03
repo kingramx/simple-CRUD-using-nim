@@ -57,6 +57,7 @@ proc insertUser*(username:string, email:string, password:string) =
     let db = open("users.db", "", "", "")
 
     try:
+        #let checkCurrentUserNme = db.getValue(sql"SELECT Username from ")
         db.exec(sql"BEGIN")
         db.exec(
             sql""" INSERT INTO Users (Username, Email, Password)
@@ -75,17 +76,19 @@ proc insertProfile*(first_name:string, last_name:string, age:int, bio: string, d
     let db = open("users.db", "", "", "")
     
     try:
+        let checkProfileUniqueness = db.tryExec(sql "SELECT ProfileID FROM Profile WHERE UserID=?", user_id)
 
-        
-
-        db.exec(sql"BEGIN")
-        db.exec(
-            sql""" INSERT INTO Profile (Firstname, Lastname, Age, Bio, Date_joined, UserID)
-            VALUES (?, ?, ?, ?, ?, ?)""", first_name, last_name, age, bio, date_joined, user_id
-        )
-        db.exec(sql"COMMIT")
-        echo "New profile inserted for user with id: " & $user_id
-
+        if checkProfileUniqueness:
+            echo "This User has Profile already!"
+        else:
+            db.exec(sql"BEGIN")
+            db.exec(
+                sql""" INSERT INTO Profile (Firstname, Lastname, Age, Bio, Date_joined, UserID)
+                VALUES (?, ?, ?, ?, ?, ?)""", first_name, last_name, age, bio, date_joined, user_id
+            )
+            db.exec(sql"COMMIT")
+            echo "New profile inserted for user with id: " & $user_id
+            
     except DbError as err:
         echo "This Profile is available [ " & err.msg & " ]"
 
@@ -98,15 +101,52 @@ proc deleteFromUser*(user_id: int) =
     try:
         db.exec(sql"BEGIN")
         db.exec(
-            sql"DELETE FROM Users")
+            sql"DELETE FROM Users WHERE UserID=?", user_id)
         db.exec(sql"COMMIT")
-       # echo "user with id: " & $user_id & " deleted!"
+        echo "User with id: " & $user_id & " deleted!"
 
     except DbError as err:
         echo "An error occurred [ " & err.msg & " ]"
 
     finally:
         db.close()
+
+proc deleteFormProfile*(profile_id: int) = 
+    let db = open("users.db", "", "", "")
+
+    try:
+        db.exec(sql"BEGIN")
+        db.exec(
+            sql"DELETE FROM Profile WHERE ProfileID=?", profile_id)
+        db.exec(sql"COMMIT")
+        echo "Profile with id: " & $profile_id & " deleted!"
+
+    except DbError as err:
+        echo "An error occurred [ " & err.msg & " ]"
+
+    finally:
+        db.close()
+
+proc updateUser*(first_name:string, last_name:string, user_id:int) = 
+    let db = open("users.db", "", "", "")
+
+    try:
+        db.exec(sql"BEGIN")
+        db.exec(
+            sql"UPDATE User SET Username=?, Email=? WHERE ProfileID=?", first_name, last_name, user_id)
+        db.exec(sql"COMMIT")
+        echo "User with id: " & $user_id & " updated!"
+
+    except DbError as err:
+        echo "An error occurred [ " & err.msg & " ]"
+
+    finally:
+        db.close()
+
+
+
+
+
 
 proc selectFromUser*() =
     let db = open("users.db", "", "", "")
